@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Create temporary directory and move into it
+TMPDIR=$(mktemp -d) || { echo "Failed to create temp directory"; exit 1; }
+cd "$TMPDIR" || exit 1
+
+# Get the redirect URL from Discord's API
+REDIRECT_URL=$(curl -s "https://discord.com/api/download/stable?platform=linux&format=deb" | \
+    grep -o 'https://[^"]*\.deb' | \
+    head -n1)
+
+# Check if we got a valid URL
+if [[ -z "$REDIRECT_URL" ]]; then
+    echo "❌ Failed to extract download URL"
+    exit 1
+fi
+
+# Extract filename from URL
+FILENAME=$(basename "$REDIRECT_URL")
+
+# Download the latest version
+echo "⬇️ Downloading Discord: $FILENAME"
+curl -# -L -o "$FILENAME" "$REDIRECT_URL" || {
+    echo "❌ Download failed";
+    exit 1
+}
+
+# Install the package
+echo "🛠 Installing..."
+sudo dpkg -i "$FILENAME" || {
+    echo "⚠️ Fixing dependencies..."
+    sudo apt-get install -f -y
+}
+
+# Clean up
+cd ..
+rm -rf "$TMPDIR"
+echo "✅ Discord update complete!"
